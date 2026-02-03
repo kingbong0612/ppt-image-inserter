@@ -228,7 +228,9 @@ class PPTImageInserter:
         available_width = prs.slide_width - margin_left - margin_right
         available_height = prs.slide_height - margin_top - margin_bottom
         
-        if len(images_to_add) == 1:
+        num_images = len(images_to_add)
+        
+        if num_images == 1:
             # 이미지 1개: 정사각형으로 크롭하여 중앙 배치
             img_path = images_to_add[0]
             
@@ -244,14 +246,36 @@ class PPTImageInserter:
                 
                 slide.shapes.add_picture(cropped_img, left, top, width=square_size, height=square_size)
         
-        elif len(images_to_add) == 3:
-            # 세로 이미지 3개: 가로로 나란히 배치 (안전 여백 포함)
-            gap = Inches(0.3)  # 이미지 간 간격
+        elif num_images == 2:
+            # 이미지 2개: 가로로 나란히 배치
+            gap = Inches(0.3)
             
-            # 정사각형 크기 계산 (사용 가능한 너비에서 계산)
+            # 정사각형 크기 계산
+            square_size = (available_width - gap) / 2
+            
+            # 높이 체크
+            if square_size > available_height:
+                square_size = available_height
+            
+            # 시작 위치 계산 (중앙 정렬)
+            total_width = square_size * 2 + gap
+            start_left = margin_left + (available_width - total_width) / 2
+            top = margin_top + (available_height - square_size) / 2
+            
+            for i, img_path in enumerate(images_to_add):
+                cropped_img = self.crop_image_to_square(img_path)
+                if cropped_img:
+                    left = start_left + (i * (square_size + gap))
+                    slide.shapes.add_picture(cropped_img, left, top, width=square_size, height=square_size)
+        
+        elif num_images == 3:
+            # 이미지 3개: 가로로 나란히 배치
+            gap = Inches(0.3)
+            
+            # 정사각형 크기 계산
             square_size = (available_width - gap * 2) / 3
             
-            # 높이 체크 - 너무 크면 높이에 맞춤
+            # 높이 체크
             if square_size > available_height:
                 square_size = available_height
             
@@ -261,7 +285,6 @@ class PPTImageInserter:
             top = margin_top + (available_height - square_size) / 2
             
             for i, img_path in enumerate(images_to_add):
-                # 이미지를 정사각형으로 크롭
                 cropped_img = self.crop_image_to_square(img_path)
                 if cropped_img:
                     left = start_left + (i * (square_size + gap))
@@ -345,44 +368,17 @@ class PPTImageInserter:
             
             # 이미지 분석 및 배치
             try:
-                # 현재 이미지와 다음 이미지들 확인
-                current_img = images[idx]
-                img_dims = self.get_image_dimensions(current_img)
+                # 모든 이미지를 3개씩 묶어서 배치 (가로/세로 구분 없이)
+                batch_images = images[idx:idx+3]
                 
-                if img_dims:
-                    img_width, img_height = img_dims
-                    aspect_ratio = img_width / img_height
-                    
-                    # 가로 이미지면 1개만, 세로 이미지면 3개 배치
-                    if aspect_ratio > 1.3:
-                        # 가로 이미지: 1개만
-                        images_to_add = [current_img]
-                        idx += 1
-                    else:
-                        # 세로 이미지: 최대 3개 배치
-                        images_to_add = [current_img]
-                        
-                        # 다음 이미지 확인 (최대 2개 더)
-                        for j in range(1, 3):
-                            if idx + j < len(images):
-                                next_dims = self.get_image_dimensions(images[idx + j])
-                                if next_dims and next_dims[0] / next_dims[1] <= 1.3:
-                                    images_to_add.append(images[idx + j])
-                                else:
-                                    break
-                            else:
-                                break
-                        
-                        idx += len(images_to_add)
-                    
-                    self.add_images_to_slide(prs, slide, images_to_add, prs.slide_height)
-                    print(f"  - 이미지 슬라이드 추가: {len(images_to_add)}개 이미지")
-                else:
-                    idx += 1
+                self.add_images_to_slide(prs, slide, batch_images, prs.slide_height)
+                print(f"  - 이미지 슬라이드 추가: {len(batch_images)}개 이미지")
+                
+                idx += len(batch_images)
                     
             except Exception as e:
                 print(f"  - 이미지 추가 실패: {e}")
-                idx += 1
+                idx += 3 if idx + 3 <= len(images) else len(images) - idx
     
     def create_ppt(self, sample_mode=False, sample_count=10):
         """전체 PPT를 생성합니다.
