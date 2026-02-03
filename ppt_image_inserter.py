@@ -257,8 +257,8 @@ def main():
     # 스크립트가 있는 현재 디렉토리 경로
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     
-    # 이미지 디렉토리 (스크립트와 같은 폴더의 '업체이미지' 폴더)
-    BASE_IMAGE_DIR = os.path.join(SCRIPT_DIR, "업체이미지")
+    # 이미지 디렉토리 (naver-map-photo-downloader의 downloads 폴더)
+    BASE_IMAGE_DIR = r"C:\Users\user\Documents\GitHub\naver-map-photo-downloader\downloads"
     
     # 템플릿 PPT 파일 (스크립트와 같은 폴더)
     TEMPLATE_PPT = os.path.join(SCRIPT_DIR, "세신샵.pptx")

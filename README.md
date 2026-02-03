@@ -20,25 +20,28 @@
 
 ## 📁 디렉토리 구조
 
-프로젝트 폴더에 다음과 같이 파일을 배치하세요:
+이 프로젝트는 [naver-map-photo-downloader](https://github.com/kingbong0612/naver-map-photo-downloader)의 다운로드된 이미지를 사용합니다.
+
+**필요한 폴더 구조:**
 
 ```
-ppt-image-inserter/
-├── ppt_image_inserter.py           # 메인 스크립트
-├── 세신샵.pptx                      # 템플릿 PPT 파일
-├── 리스트_네이버지도링크추가.xlsx    # 업체 순서 엑셀 파일
-├── 업체이미지/                      # 업체 이미지 폴더
-│   ├── 온아1호/
-│   │   └── 업체/
-│   │       ├── 업체_001.jpg
-│   │       ├── 업체_002.jpg
-│   │       └── ...
-│   ├── 온아2호/
-│   │   └── 업체/
-│   │       ├── 업체_001.jpg
-│   │       └── ...
-│   └── ... (총 89개 업체 폴더)
-└── 세신샵_완성본.pptx               # 생성된 PPT 파일 (자동 생성)
+GitHub/
+├── naver-map-photo-downloader/
+│   └── downloads/                   # 이미지 폴더 (자동 인식)
+│       ├── 온아1호/
+│       │   └── 업체/
+│       │       ├── 업체_001.jpg
+│       │       └── ...
+│       ├── 온아2호/
+│       │   └── 업체/
+│       │       └── ...
+│       └── ... (총 89개 업체 폴더)
+│
+└── ppt-image-inserter/              # 이 프로젝트
+    ├── ppt_image_inserter.py        # 메인 스크립트
+    ├── 세신샵.pptx                  # 템플릿 PPT 파일
+    ├── 리스트_네이버지도링크추가.xlsx # 업체 순서 엑셀 파일
+    └── 세신샵_완성본.pptx           # 생성된 PPT (자동 생성)
 ```
 
 ## 🚀 사용 방법
@@ -57,10 +60,11 @@ pip install -r requirements.txt
 
 ### 2. 파일 준비
 
-프로젝트 폴더에 다음 파일들을 배치하세요:
+`ppt-image-inserter` 폴더에 다음 파일들을 배치하세요:
 - `세신샵.pptx` - 템플릿 PPT 파일
 - `리스트_네이버지도링크추가.xlsx` - 업체 순서 엑셀 파일
-- `업체이미지/` 폴더 - 각 업체별 이미지가 담긴 폴더
+
+**이미지는 별도 설정 불필요!** `naver-map-photo-downloader/downloads` 폴더를 자동으로 찾습니다.
 
 ### 3. 실행
 
@@ -105,16 +109,13 @@ python ppt_image_inserter.py
 
 ### 경로를 직접 지정하고 싶다면
 
-`ppt_image_inserter.py` 파일의 253-270번째 줄 부근에서 경로를 수정할 수 있습니다:
+`ppt_image_inserter.py` 파일의 256번째 줄 부근에서 경로를 수정할 수 있습니다:
 
 ```python
-# 스크립트가 있는 현재 디렉토리 경로
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+# 이미지 디렉토리 (기본값: naver-map-photo-downloader의 downloads 폴더)
+BASE_IMAGE_DIR = r"C:\Users\user\Documents\GitHub\naver-map-photo-downloader\downloads"
 
-# 이미지 디렉토리
-BASE_IMAGE_DIR = os.path.join(SCRIPT_DIR, "업체이미지")
-
-# 또는 직접 경로 지정:
+# 또는 다른 경로로 변경:
 # BASE_IMAGE_DIR = r"C:\Users\user\Downloads\서울\중구"
 ```
 
