@@ -263,23 +263,6 @@ class PPTImageInserter:
         while idx < len(images):
             slide = prs.slides.add_slide(slide_layout)
             
-            # 제목 추가 (샘플 형식대로)
-            if idx == 0:
-                slide_title = "가격표"
-            else:
-                slide_title = "인테리어"
-            
-            textbox = slide.shapes.add_textbox(Inches(0), Inches(0.4), Inches(2.08), Inches(0.7))
-            text_frame = textbox.text_frame
-            text_frame.text = slide_title
-            text_frame.word_wrap = True
-            
-            # 텍스트 스타일: 맑은 고딕, 18pt
-            for paragraph in text_frame.paragraphs:
-                paragraph.font.name = '맑은 고딕'
-                paragraph.font.size = Pt(18)
-                paragraph.font.bold = True
-            
             # 이미지 분석 및 배치
             try:
                 # 현재 이미지와 다음 이미지들 확인
