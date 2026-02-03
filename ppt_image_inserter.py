@@ -176,10 +176,18 @@ class PPTImageInserter:
             except Exception as e:
                 print(f"  - 이미지 추가 실패 ({image_path}): {e}")
     
-    def create_ppt(self):
-        """전체 PPT를 생성합니다."""
+    def create_ppt(self, sample_mode=False, sample_count=10):
+        """전체 PPT를 생성합니다.
+        
+        Args:
+            sample_mode: 샘플 모드 여부 (True: 일부만 생성, False: 전체 생성)
+            sample_count: 샘플 모드일 때 생성할 업체 수
+        """
         print("=" * 60)
-        print("PPT 이미지 자동 삽입 시작")
+        if sample_mode:
+            print(f"PPT 샘플 생성 시작 (최대 {sample_count}개 업체)")
+        else:
+            print("PPT 전체 생성 시작")
         print("=" * 60)
         
         # 업체 디렉토리 찾기
@@ -193,6 +201,12 @@ class PPTImageInserter:
         
         print(f"발견된 업체 수: {len(shop_dirs)}")
         
+        # 샘플 모드일 경우 업체 수 제한
+        if sample_mode:
+            original_count = len(shop_dirs)
+            shop_dirs = shop_dirs[:sample_count]
+            print(f"샘플 모드: {original_count}개 중 {len(shop_dirs)}개 업체만 처리합니다.")
+        
         # 템플릿 PPT 로드
         print(f"\n템플릿 PPT 로드 중: {self.template_ppt_path}")
         prs = Presentation(self.template_ppt_path)
@@ -202,7 +216,10 @@ class PPTImageInserter:
         slide = prs.slides.add_slide(slide_layout)
         textbox = slide.shapes.add_textbox(Inches(4), Inches(3), Inches(5.33), Inches(1.5))
         text_frame = textbox.text_frame
-        text_frame.text = "세신샵 업체 정보"
+        if sample_mode:
+            text_frame.text = f"세신샵 업체 정보 (샘플 {len(shop_dirs)}개)"
+        else:
+            text_frame.text = "세신샵 업체 정보"
         for paragraph in text_frame.paragraphs:
             paragraph.font.size = Inches(0.6)
             paragraph.font.bold = True
@@ -220,7 +237,10 @@ class PPTImageInserter:
         prs.save(self.output_ppt_path)
         
         print("=" * 60)
-        print(f"완료! 총 {len(shop_dirs)}개 업체의 슬라이드가 생성되었습니다.")
+        if sample_mode:
+            print(f"샘플 완료! {len(shop_dirs)}개 업체의 슬라이드가 생성되었습니다.")
+        else:
+            print(f"전체 완료! 총 {len(shop_dirs)}개 업체의 슬라이드가 생성되었습니다.")
         print(f"출력 파일: {self.output_ppt_path}")
         print("=" * 60)
         
@@ -256,15 +276,62 @@ def main():
         print(f"오류: 템플릿 PPT 파일을 찾을 수 없습니다: {TEMPLATE_PPT}")
         return
     
+    # 작업 모드 선택
+    print("\n" + "=" * 60)
+    print("PPT 자동 생성 프로그램")
+    print("=" * 60)
+    print("\n작업 모드를 선택하세요:")
+    print("  1. 샘플 모드 (처음 10개 업체만 생성)")
+    print("  2. 전체 작업 (모든 업체 생성)")
+    print("=" * 60)
+    
+    while True:
+        try:
+            choice = input("\n선택 (1 또는 2): ").strip()
+            
+            if choice == "1":
+                # 샘플 모드
+                sample_mode = True
+                sample_count = 10
+                output_file = OUTPUT_PPT.replace(".pptx", "_샘플.pptx")
+                print(f"\n✓ 샘플 모드 선택됨 (처음 {sample_count}개 업체)")
+                break
+            elif choice == "2":
+                # 전체 작업
+                sample_mode = False
+                sample_count = 0
+                output_file = OUTPUT_PPT
+                print("\n✓ 전체 작업 모드 선택됨 (모든 업체)")
+                break
+            else:
+                print("❌ 잘못된 입력입니다. 1 또는 2를 입력하세요.")
+        except KeyboardInterrupt:
+            print("\n\n프로그램을 종료합니다.")
+            return
+    
+    # 확인 메시지
+    print("\n" + "=" * 60)
+    print("설정 확인:")
+    print(f"  - 모드: {'샘플 (10개)' if sample_mode else '전체 작업'}")
+    print(f"  - 이미지 디렉토리: {BASE_IMAGE_DIR}")
+    print(f"  - 엑셀 파일: {EXCEL_FILE}")
+    print(f"  - 출력 파일: {output_file}")
+    print("=" * 60)
+    
+    proceed = input("\n진행하시겠습니까? (y/n): ").strip().lower()
+    if proceed != 'y':
+        print("작업을 취소합니다.")
+        return
+    
     # PPT 생성기 실행
     inserter = PPTImageInserter(
         template_ppt_path=TEMPLATE_PPT,
         base_image_dir=BASE_IMAGE_DIR,
-        output_ppt_path=OUTPUT_PPT,
+        output_ppt_path=output_file,
         excel_path=EXCEL_FILE
     )
     
-    inserter.create_ppt()
+    inserter.create_ppt(sample_mode=sample_mode, sample_count=sample_count)
 
 
 if __name__ == "__main__":
