@@ -75,10 +75,24 @@ class PPTImageInserter:
                                     if os.path.exists(company_folder):
                                         # 네이버플레이스 캡처 이미지
                                         naver_capture = os.path.join(company_folder, "네이버플레이스_캡처.png")
-                                        # 가격표 이미지들
-                                        price_images = sorted(glob.glob(os.path.join(company_folder, "가격표_*.jpg")))
-                                        if not price_images:
-                                            price_images = sorted(glob.glob(os.path.join(company_folder, "가격표_*.png")))
+                                        
+                                        # 가격표 이미지들 (가격표.jpg, 가격표_1.jpg, 가격표_2.jpg 등)
+                                        price_images = []
+                                        
+                                        # 가격표.jpg 또는 가격표.png 확인
+                                        single_price_jpg = os.path.join(company_folder, "가격표.jpg")
+                                        single_price_png = os.path.join(company_folder, "가격표.png")
+                                        if os.path.exists(single_price_jpg):
+                                            price_images.append(single_price_jpg)
+                                        elif os.path.exists(single_price_png):
+                                            price_images.append(single_price_png)
+                                        
+                                        # 가격표_*.jpg 또는 가격표_*.png 파일들 추가
+                                        numbered_prices = sorted(glob.glob(os.path.join(company_folder, "가격표_*.jpg")))
+                                        if not numbered_prices:
+                                            numbered_prices = sorted(glob.glob(os.path.join(company_folder, "가격표_*.png")))
+                                        price_images.extend(numbered_prices)
+                                        
                                         # 업체 이미지들
                                         image_files = glob.glob(os.path.join(company_folder, "업체_*.jpg"))
                                         
