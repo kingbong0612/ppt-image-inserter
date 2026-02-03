@@ -148,30 +148,55 @@ class PPTImageInserter:
     
     def add_images_to_slide(self, prs, slide, images_to_add, slide_height):
         """슬라이드에 이미지를 최적으로 배치합니다."""
+        # 안전 여백 설정
+        margin_left = Inches(0.5)
+        margin_right = Inches(0.5)
+        margin_top = Inches(1.2)
+        margin_bottom = Inches(0.3)
+        
+        # 사용 가능한 영역
+        available_width = prs.slide_width - margin_left - margin_right
+        available_height = prs.slide_height - margin_top - margin_bottom
+        
         if len(images_to_add) == 1:
-            # 이미지 1개: 가로 이미지만 (화면 가득)
+            # 이미지 1개: 가로 이미지 (여백 포함)
             img_path = images_to_add[0]
             img_dims = self.get_image_dimensions(img_path)
             if img_dims:
                 img_width, img_height = img_dims
                 aspect_ratio = img_width / img_height
                 
-                width = Inches(11.78)
-                height = width / aspect_ratio
-                left = Inches(0.71)
-                top = Inches(1.72)
+                # 사용 가능한 영역에 맞춤
+                if aspect_ratio > available_width / available_height:
+                    # 가로가 더 긴 경우
+                    width = available_width
+                    height = width / aspect_ratio
+                else:
+                    # 세로가 더 긴 경우
+                    height = available_height
+                    width = height * aspect_ratio
+                
+                # 중앙 정렬
+                left = margin_left + (available_width - width) / 2
+                top = margin_top + (available_height - height) / 2
                 
                 slide.shapes.add_picture(img_path, left, top, width=width, height=height)
         
         elif len(images_to_add) == 3:
-            # 세로 이미지 3개: 가로로 나란히 배치
-            square_size = Inches(3.7)  # 정사각형 크기
-            gap = Inches(0.4)  # 이미지 간 간격
+            # 세로 이미지 3개: 가로로 나란히 배치 (안전 여백 포함)
+            gap = Inches(0.3)  # 이미지 간 간격
+            
+            # 정사각형 크기 계산 (사용 가능한 너비에서 계산)
+            square_size = (available_width - gap * 2) / 3
+            
+            # 높이 체크 - 너무 크면 높이에 맞춤
+            if square_size > available_height:
+                square_size = available_height
             
             # 시작 위치 계산 (중앙 정렬)
             total_width = square_size * 3 + gap * 2
-            start_left = (prs.slide_width - total_width) / 2
-            top = Inches(1.3)
+            start_left = margin_left + (available_width - total_width) / 2
+            top = margin_top + (available_height - square_size) / 2
             
             for i, img_path in enumerate(images_to_add):
                 # 이미지를 정사각형으로 크롭
