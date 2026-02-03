@@ -11,39 +11,85 @@ from pathlib import Path
 from pptx import Presentation
 from pptx.util import Inches
 from PIL import Image
-import shutil
+import openpyxl
 
 class PPTImageInserter:
-    def __init__(self, template_ppt_path, base_image_dir, output_ppt_path):
+    def __init__(self, template_ppt_path, base_image_dir, output_ppt_path, excel_path=None):
         """
         Args:
             template_ppt_path: 템플릿 PPT 파일 경로
             base_image_dir: 이미지가 있는 기본 디렉토리 (예: C:/Users/user/Downloads/서울/중구)
             output_ppt_path: 출력 PPT 파일 경로
+            excel_path: 엑셀 파일 경로 (업체 순서 정보)
         """
         self.template_ppt_path = template_ppt_path
         self.base_image_dir = base_image_dir
         self.output_ppt_path = output_ppt_path
+        self.excel_path = excel_path
         
+    def load_shop_order_from_excel(self):
+        """엑셀 파일에서 업체 순서를 읽어옵니다."""
+        if not self.excel_path or not os.path.exists(self.excel_path):
+            print("엑셀 파일을 찾을 수 없습니다. 기본 정렬을 사용합니다.")
+            return None
+        
+        try:
+            wb = openpyxl.load_workbook(self.excel_path)
+            ws = wb.active
+            
+            shop_order = []
+            for row in range(2, ws.max_row + 1):
+                shop_name = ws.cell(row, 3).value  # 매장명은 3번째 컬럼
+                if shop_name:
+                    shop_order.append(shop_name.strip())
+            
+            print(f"엑셀에서 {len(shop_order)}개 업체 순서 로드 완료")
+            return shop_order
+            
+        except Exception as e:
+            print(f"엑셀 파일 읽기 오류: {e}")
+            return None
+    
     def find_shop_directories(self):
-        """업체 디렉토리 목록을 찾습니다."""
-        shop_dirs = []
+        """업체 디렉토리 목록을 찾고 엑셀 순서대로 정렬합니다."""
+        shop_dirs_dict = {}
         
         # 기본 경로에서 하위 디렉토리 탐색
         if os.path.exists(self.base_image_dir):
-            for item in sorted(os.listdir(self.base_image_dir)):
+            for item in os.listdir(self.base_image_dir):
                 item_path = os.path.join(self.base_image_dir, item)
                 if os.path.isdir(item_path):
                     # 업체 폴더 내에 업체_xxx.jpg 파일이 있는지 확인
                     image_files = glob.glob(os.path.join(item_path, "업체", "업체_*.jpg"))
                     if image_files:
-                        shop_dirs.append({
+                        shop_dirs_dict[item] = {
                             'name': item,
                             'path': item_path,
                             'images': sorted(image_files)
-                        })
+                        }
         
-        return shop_dirs
+        # 엑셀 파일에서 순서 로드
+        shop_order = self.load_shop_order_from_excel()
+        
+        if shop_order:
+            # 엑셀 순서대로 정렬
+            ordered_shops = []
+            for shop_name in shop_order:
+                if shop_name in shop_dirs_dict:
+                    ordered_shops.append(shop_dirs_dict[shop_name])
+                else:
+                    print(f"  경고: '{shop_name}' 폴더를 찾을 수 없습니다.")
+            
+            # 엑셀에 없는 업체는 마지막에 추가
+            for shop_name, shop_info in sorted(shop_dirs_dict.items()):
+                if shop_name not in shop_order:
+                    print(f"  추가: '{shop_name}' (엑셀에 없는 업체)")
+                    ordered_shops.append(shop_info)
+            
+            return ordered_shops
+        else:
+            # 엑셀이 없으면 알파벳 순서로 정렬
+            return [shop_dirs_dict[key] for key in sorted(shop_dirs_dict.keys())]
     
     def get_image_dimensions(self, image_path):
         """이미지의 크기를 확인합니다."""
@@ -197,6 +243,9 @@ def main():
     # 템플릿 PPT 파일
     TEMPLATE_PPT = "/home/user/uploaded_files/세신샵.pptx"
     
+    # 엑셀 파일 (업체 순서 정보)
+    EXCEL_FILE = "/home/user/uploaded_files/리스트_네이버지도링크추가 - 복사본.xlsx"
+    
     # 출력 PPT 파일
     OUTPUT_PPT = "/home/user/webapp/세신샵_완성본.pptx"
     
@@ -211,7 +260,8 @@ def main():
     inserter = PPTImageInserter(
         template_ppt_path=TEMPLATE_PPT,
         base_image_dir=BASE_IMAGE_DIR,
-        output_ppt_path=OUTPUT_PPT
+        output_ppt_path=OUTPUT_PPT,
+        excel_path=EXCEL_FILE
     )
     
     inserter.create_ppt()
