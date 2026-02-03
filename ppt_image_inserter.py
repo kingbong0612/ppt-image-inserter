@@ -75,14 +75,19 @@ class PPTImageInserter:
                                     if os.path.exists(company_folder):
                                         # 네이버플레이스 캡처 이미지
                                         naver_capture = os.path.join(company_folder, "네이버플레이스_캡처.png")
+                                        # 가격표 이미지들
+                                        price_images = sorted(glob.glob(os.path.join(company_folder, "가격표_*.jpg")))
+                                        if not price_images:
+                                            price_images = sorted(glob.glob(os.path.join(company_folder, "가격표_*.png")))
                                         # 업체 이미지들
                                         image_files = glob.glob(os.path.join(company_folder, "업체_*.jpg"))
                                         
-                                        if os.path.exists(naver_capture) or image_files:
+                                        if os.path.exists(naver_capture) or price_images or image_files:
                                             shop_dirs_dict[shop_name] = {
                                                 'name': shop_name,
                                                 'path': shop_path,
                                                 'naver_capture': naver_capture if os.path.exists(naver_capture) else None,
+                                                'price_images': price_images,
                                                 'images': sorted(image_files)
                                             }
         
@@ -146,6 +151,71 @@ class PPTImageInserter:
             print(f"이미지 크롭 오류 ({image_path}): {e}")
             return None
     
+    def add_price_images_to_slide(self, prs, slide, price_images):
+        """가격표 이미지를 슬라이드에 배치합니다 (최대 3개)."""
+        # 안전 여백 설정
+        margin_left = Inches(0.5)
+        margin_top = Inches(0.5)
+        margin_bottom = Inches(0.5)
+        
+        # 사용 가능한 영역
+        available_width = prs.slide_width - margin_left * 2
+        available_height = prs.slide_height - margin_top - margin_bottom
+        
+        num_images = len(price_images)
+        
+        if num_images == 1:
+            # 가격표 1개: 중앙에 크게 배치
+            img_path = price_images[0]
+            img_dims = self.get_image_dimensions(img_path)
+            if img_dims:
+                img_width, img_height = img_dims
+                aspect_ratio = img_width / img_height
+                
+                # 9:16 세로 비율에 맞춤
+                height = available_height
+                width = height * aspect_ratio
+                
+                # 너무 넓으면 너비에 맞춤
+                if width > available_width:
+                    width = available_width
+                    height = width / aspect_ratio
+                
+                # 중앙 정렬
+                left = margin_left + (available_width - width) / 2
+                top = margin_top + (available_height - height) / 2
+                
+                slide.shapes.add_picture(img_path, left, top, width=width, height=height)
+        
+        else:
+            # 가격표 2-3개: 가로로 나란히 배치
+            gap = Inches(0.3)  # 이미지 간 간격
+            
+            # 각 이미지 너비 계산
+            total_gap = gap * (num_images - 1)
+            img_width = (available_width - total_gap) / num_images
+            
+            # 9:16 비율로 높이 계산
+            img_height = img_width * (16 / 9)
+            
+            # 높이가 너무 크면 높이에 맞춤
+            if img_height > available_height:
+                img_height = available_height
+                img_width = img_height * (9 / 16)
+                # 너비 재계산
+                total_gap = gap * (num_images - 1)
+                total_width = img_width * num_images + total_gap
+            else:
+                total_width = available_width
+            
+            # 시작 위치 계산 (중앙 정렬)
+            start_left = margin_left + (available_width - total_width) / 2
+            top = margin_top + (available_height - img_height) / 2
+            
+            for i, img_path in enumerate(price_images):
+                left = start_left + (i * (img_width + gap))
+                slide.shapes.add_picture(img_path, left, top, width=img_width, height=img_height)
+    
     def add_images_to_slide(self, prs, slide, images_to_add, slide_height):
         """슬라이드에 이미지를 최적으로 배치합니다."""
         # 안전 여백 설정
@@ -208,6 +278,7 @@ class PPTImageInserter:
     def add_shop_to_ppt(self, prs, shop_info, shop_number):
         """업체 정보를 PPT에 추가합니다."""
         naver_capture = shop_info.get('naver_capture')
+        price_images = shop_info.get('price_images', [])
         images = shop_info['images']
         shop_name = shop_info['name']
         
@@ -258,7 +329,24 @@ class PPTImageInserter:
         else:
             print(f"  - 표지 슬라이드 추가: {shop_name}")
         
-        # 2. 이미지 슬라이드 추가 (업체_*.jpg) - 이미지를 그룹으로 묶어 처리
+        # 2. 가격표 슬라이드 추가 (가격표_*.jpg/png, 3개씩 배치)
+        if price_images:
+            idx = 0
+            while idx < len(price_images):
+                slide = prs.slides.add_slide(slide_layout)
+                
+                # 최대 3개씩 묶어서 배치
+                batch_images = price_images[idx:idx+3]
+                
+                try:
+                    self.add_price_images_to_slide(prs, slide, batch_images)
+                    print(f"  - 가격표 슬라이드 추가: {len(batch_images)}개 이미지")
+                except Exception as e:
+                    print(f"  - 가격표 추가 실패: {e}")
+                
+                idx += 3
+        
+        # 3. 업체 이미지 슬라이드 추가 (업체_*.jpg) - 이미지를 그룹으로 묶어 처리
         idx = 0
         while idx < len(images):
             slide = prs.slides.add_slide(slide_layout)
