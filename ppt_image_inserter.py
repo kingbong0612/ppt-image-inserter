@@ -13,6 +13,7 @@ from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN
 from PIL import Image
 import openpyxl
+import io
 
 class PPTImageInserter:
     def __init__(self, template_ppt_path, base_image_dir, output_ppt_path, excel_path=None):
@@ -117,84 +118,67 @@ class PPTImageInserter:
             print(f"이미지 읽기 오류 ({image_path}): {e}")
             return None
     
+    def crop_image_to_square(self, image_path):
+        """이미지를 중앙 기준으로 정사각형으로 크롭합니다."""
+        try:
+            with Image.open(image_path) as img:
+                width, height = img.size
+                
+                # 정사각형 크기 결정 (짧은 쪽 기준)
+                size = min(width, height)
+                
+                # 중앙 크롭 좌표 계산
+                left = (width - size) // 2
+                top = (height - size) // 2
+                right = left + size
+                bottom = top + size
+                
+                # 크롭
+                cropped = img.crop((left, top, right, bottom))
+                
+                # 메모리에 저장
+                img_byte_arr = io.BytesIO()
+                cropped.save(img_byte_arr, format='PNG')
+                img_byte_arr.seek(0)
+                
+                return img_byte_arr
+        except Exception as e:
+            print(f"이미지 크롭 오류 ({image_path}): {e}")
+            return None
+    
     def add_images_to_slide(self, prs, slide, images_to_add, slide_height):
         """슬라이드에 이미지를 최적으로 배치합니다."""
         if len(images_to_add) == 1:
-            # 이미지 1개: 가로 이미지는 화면 가득, 세로 이미지는 중앙 배치
+            # 이미지 1개: 가로 이미지만 (화면 가득)
             img_path = images_to_add[0]
             img_dims = self.get_image_dimensions(img_path)
             if img_dims:
                 img_width, img_height = img_dims
                 aspect_ratio = img_width / img_height
                 
-                # 가로 이미지 (비율 > 1.3)
-                if aspect_ratio > 1.3:
-                    width = Inches(11.78)
-                    height = width / aspect_ratio
-                    left = Inches(0.71)
-                    top = Inches(1.72)
-                else:
-                    # 세로 이미지: 화면 높이에 맞춤
-                    height = Inches(5.12)
-                    width = height * aspect_ratio
-                    left = (prs.slide_width - width) / 2
-                    top = Inches(1.38)
+                width = Inches(11.78)
+                height = width / aspect_ratio
+                left = Inches(0.71)
+                top = Inches(1.72)
                 
                 slide.shapes.add_picture(img_path, left, top, width=width, height=height)
         
-        elif len(images_to_add) == 2:
-            # 이미지 2개: 좌우 배치
-            for i, img_path in enumerate(images_to_add):
-                img_dims = self.get_image_dimensions(img_path)
-                if img_dims:
-                    img_width, img_height = img_dims
-                    aspect_ratio = img_width / img_height
-                    
-                    if aspect_ratio > 1.3:
-                        # 가로 이미지
-                        width = Inches(5.61)
-                        height = width / aspect_ratio
-                    else:
-                        # 세로 이미지
-                        height = Inches(5.14)
-                        width = height * aspect_ratio
-                    
-                    if i == 0:
-                        left = Inches(0.76)
-                    else:
-                        left = Inches(7.00)
-                    top = Inches(1.45)
-                    
-                    slide.shapes.add_picture(img_path, left, top, width=width, height=height)
-        
         elif len(images_to_add) == 3:
-            # 이미지 3개: 1개(왼쪽) + 2개(오른쪽 위아래)
+            # 세로 이미지 3개: 가로로 나란히 배치
+            square_size = Inches(3.7)  # 정사각형 크기
+            gap = Inches(0.4)  # 이미지 간 간격
+            
+            # 시작 위치 계산 (중앙 정렬)
+            total_width = square_size * 3 + gap * 2
+            start_left = (prs.slide_width - total_width) / 2
+            top = Inches(1.3)
+            
             for i, img_path in enumerate(images_to_add):
-                img_dims = self.get_image_dimensions(img_path)
-                if img_dims:
-                    img_width, img_height = img_dims
-                    aspect_ratio = img_width / img_height
-                    
-                    if i == 0:
-                        # 왼쪽 큰 이미지
-                        height = Inches(5.12)
-                        width = height * aspect_ratio
-                        if width > Inches(3.87):
-                            width = Inches(3.87)
-                            height = width / aspect_ratio
-                        left = Inches(0.48)
-                        top = Inches(1.38)
-                    else:
-                        # 오른쪽 작은 이미지들
-                        height = Inches(2.5)
-                        width = height * aspect_ratio
-                        if width > Inches(7.67):
-                            width = Inches(7.67)
-                            height = width / aspect_ratio
-                        left = Inches(5.13)
-                        top = Inches(1.38) if i == 1 else Inches(4.0)
-                    
-                    slide.shapes.add_picture(img_path, left, top, width=width, height=height)
+                # 이미지를 정사각형으로 크롭
+                cropped_img = self.crop_image_to_square(img_path)
+                if cropped_img:
+                    left = start_left + (i * (square_size + gap))
+                    slide.shapes.add_picture(cropped_img, left, top, width=square_size, height=square_size)
     
     def add_shop_to_ppt(self, prs, shop_info, shop_number):
         """업체 정보를 PPT에 추가합니다."""
@@ -281,20 +265,27 @@ class PPTImageInserter:
                     img_width, img_height = img_dims
                     aspect_ratio = img_width / img_height
                     
-                    # 가로 이미지면 1개만, 세로 이미지면 2-3개 배치
+                    # 가로 이미지면 1개만, 세로 이미지면 3개 배치
                     if aspect_ratio > 1.3:
                         # 가로 이미지: 1개만
                         images_to_add = [current_img]
                         idx += 1
                     else:
-                        # 세로 이미지: 최대 2-3개 배치
+                        # 세로 이미지: 최대 3개 배치
                         images_to_add = [current_img]
-                        if idx + 1 < len(images):
-                            next_dims = self.get_image_dimensions(images[idx + 1])
-                            if next_dims and next_dims[0] / next_dims[1] <= 1.3:
-                                images_to_add.append(images[idx + 1])
-                                idx += 1
-                        idx += 1
+                        
+                        # 다음 이미지 확인 (최대 2개 더)
+                        for j in range(1, 3):
+                            if idx + j < len(images):
+                                next_dims = self.get_image_dimensions(images[idx + j])
+                                if next_dims and next_dims[0] / next_dims[1] <= 1.3:
+                                    images_to_add.append(images[idx + j])
+                                else:
+                                    break
+                            else:
+                                break
+                        
+                        idx += len(images_to_add)
                     
                     self.add_images_to_slide(prs, slide, images_to_add, prs.slide_height)
                     print(f"  - 이미지 슬라이드 추가: {len(images_to_add)}개 이미지")
