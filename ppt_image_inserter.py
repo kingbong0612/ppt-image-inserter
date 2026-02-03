@@ -9,7 +9,8 @@ import os
 import glob
 from pathlib import Path
 from pptx import Presentation
-from pptx.util import Inches
+from pptx.util import Inches, Pt
+from pptx.enum.text import PP_ALIGN
 from PIL import Image
 import openpyxl
 
@@ -116,33 +117,109 @@ class PPTImageInserter:
             print(f"이미지 읽기 오류 ({image_path}): {e}")
             return None
     
+    def add_images_to_slide(self, prs, slide, images_to_add, slide_height):
+        """슬라이드에 이미지를 최적으로 배치합니다."""
+        if len(images_to_add) == 1:
+            # 이미지 1개: 가로 이미지는 화면 가득, 세로 이미지는 중앙 배치
+            img_path = images_to_add[0]
+            img_dims = self.get_image_dimensions(img_path)
+            if img_dims:
+                img_width, img_height = img_dims
+                aspect_ratio = img_width / img_height
+                
+                # 가로 이미지 (비율 > 1.3)
+                if aspect_ratio > 1.3:
+                    width = Inches(11.78)
+                    height = width / aspect_ratio
+                    left = Inches(0.71)
+                    top = Inches(1.72)
+                else:
+                    # 세로 이미지: 화면 높이에 맞춤
+                    height = Inches(5.12)
+                    width = height * aspect_ratio
+                    left = (prs.slide_width - width) / 2
+                    top = Inches(1.38)
+                
+                slide.shapes.add_picture(img_path, left, top, width=width, height=height)
+        
+        elif len(images_to_add) == 2:
+            # 이미지 2개: 좌우 배치
+            for i, img_path in enumerate(images_to_add):
+                img_dims = self.get_image_dimensions(img_path)
+                if img_dims:
+                    img_width, img_height = img_dims
+                    aspect_ratio = img_width / img_height
+                    
+                    if aspect_ratio > 1.3:
+                        # 가로 이미지
+                        width = Inches(5.61)
+                        height = width / aspect_ratio
+                    else:
+                        # 세로 이미지
+                        height = Inches(5.14)
+                        width = height * aspect_ratio
+                    
+                    if i == 0:
+                        left = Inches(0.76)
+                    else:
+                        left = Inches(7.00)
+                    top = Inches(1.45)
+                    
+                    slide.shapes.add_picture(img_path, left, top, width=width, height=height)
+        
+        elif len(images_to_add) == 3:
+            # 이미지 3개: 1개(왼쪽) + 2개(오른쪽 위아래)
+            for i, img_path in enumerate(images_to_add):
+                img_dims = self.get_image_dimensions(img_path)
+                if img_dims:
+                    img_width, img_height = img_dims
+                    aspect_ratio = img_width / img_height
+                    
+                    if i == 0:
+                        # 왼쪽 큰 이미지
+                        height = Inches(5.12)
+                        width = height * aspect_ratio
+                        if width > Inches(3.87):
+                            width = Inches(3.87)
+                            height = width / aspect_ratio
+                        left = Inches(0.48)
+                        top = Inches(1.38)
+                    else:
+                        # 오른쪽 작은 이미지들
+                        height = Inches(2.5)
+                        width = height * aspect_ratio
+                        if width > Inches(7.67):
+                            width = Inches(7.67)
+                            height = width / aspect_ratio
+                        left = Inches(5.13)
+                        top = Inches(1.38) if i == 1 else Inches(4.0)
+                    
+                    slide.shapes.add_picture(img_path, left, top, width=width, height=height)
+    
     def add_shop_to_ppt(self, prs, shop_info, shop_number):
         """업체 정보를 PPT에 추가합니다."""
         naver_capture = shop_info.get('naver_capture')
         images = shop_info['images']
         shop_name = shop_info['name']
         
-        slide_layout = prs.slide_layouts[5]  # Blank layout
+        slide_layout = prs.slide_layouts[6]  # Blank layout (placeholder 없음)
         
         # 1. 표지 슬라이드 (업체명 + 네이버플레이스 캡처)
         slide = prs.slides.add_slide(slide_layout)
         
-        # 제목 텍스트 박스 추가
-        left = Inches(0.5)
-        top = Inches(0.5)
-        width = Inches(12.33)
-        height = Inches(1)
-        
-        textbox = slide.shapes.add_textbox(left, top, width, height)
+        # 제목 텍스트 박스 추가 (샘플 형식대로)
+        textbox = slide.shapes.add_textbox(Inches(0), Inches(0.4), Inches(2.08), Inches(0.7))
         text_frame = textbox.text_frame
-        text_frame.text = f"{shop_name}"
+        text_frame.text = shop_name
+        text_frame.word_wrap = True
         
-        # 텍스트 스타일 설정
+        # 텍스트 스타일 설정: 맑은 고딕, 18pt
         for paragraph in text_frame.paragraphs:
-            paragraph.font.size = Inches(0.5)
+            paragraph.font.name = '맑은 고딕'
+            paragraph.font.size = Pt(18)
             paragraph.font.bold = True
         
-        # 네이버플레이스 캡처 이미지 추가
+        # 네이버플레이스 캡처 이미지 추가 (원본 비율 유지, 자르지 않음)
         if naver_capture:
             try:
                 img_dims = self.get_image_dimensions(naver_capture)
@@ -150,9 +227,9 @@ class PPTImageInserter:
                     img_width, img_height = img_dims
                     aspect_ratio = img_width / img_height
                     
-                    # 슬라이드 중앙에 배치
-                    max_width = Inches(11)
-                    max_height = Inches(5.5)
+                    # 슬라이드에 맞게 크기 조정 (자르지 않고 전체 표시)
+                    max_width = Inches(12)
+                    max_height = Inches(6)
                     
                     if aspect_ratio > max_width / max_height:
                         width = max_width
@@ -162,7 +239,7 @@ class PPTImageInserter:
                         width = height * aspect_ratio
                     
                     left = (prs.slide_width - width) / 2
-                    top = Inches(1.5)
+                    top = Inches(1.2)
                     
                     slide.shapes.add_picture(naver_capture, left, top, width=width, height=height)
                     print(f"  - 표지 슬라이드 추가: {shop_name} (네이버플레이스 캡처 포함)")
@@ -172,55 +249,61 @@ class PPTImageInserter:
         else:
             print(f"  - 표지 슬라이드 추가: {shop_name}")
         
-        # 2. 이미지 슬라이드 추가 (업체_*.jpg)
-        for idx, image_path in enumerate(images):
-            # 슬라이드 종류 결정
-            if "가격표" in os.path.basename(image_path) or idx == 0:
+        # 2. 이미지 슬라이드 추가 (업체_*.jpg) - 이미지를 그룹으로 묶어 처리
+        idx = 0
+        while idx < len(images):
+            slide = prs.slides.add_slide(slide_layout)
+            
+            # 제목 추가 (샘플 형식대로)
+            if idx == 0:
                 slide_title = "가격표"
             else:
                 slide_title = "인테리어"
             
-            slide = prs.slides.add_slide(slide_layout)
-            
-            # 제목 추가
-            textbox = slide.shapes.add_textbox(Inches(0.5), Inches(0.5), Inches(12.33), Inches(1))
+            textbox = slide.shapes.add_textbox(Inches(0), Inches(0.4), Inches(2.08), Inches(0.7))
             text_frame = textbox.text_frame
             text_frame.text = slide_title
+            text_frame.word_wrap = True
+            
+            # 텍스트 스타일: 맑은 고딕, 18pt
             for paragraph in text_frame.paragraphs:
-                paragraph.font.size = Inches(0.4)
+                paragraph.font.name = '맑은 고딕'
+                paragraph.font.size = Pt(18)
                 paragraph.font.bold = True
             
-            # 이미지 추가
+            # 이미지 분석 및 배치
             try:
-                # 이미지 크기 확인
-                img_dims = self.get_image_dimensions(image_path)
+                # 현재 이미지와 다음 이미지들 확인
+                current_img = images[idx]
+                img_dims = self.get_image_dimensions(current_img)
+                
                 if img_dims:
                     img_width, img_height = img_dims
                     aspect_ratio = img_width / img_height
                     
-                    # 슬라이드 중앙에 배치
-                    max_width = Inches(11)
-                    max_height = Inches(5.5)
-                    
-                    if aspect_ratio > max_width / max_height:
-                        # 가로가 더 긴 경우
-                        width = max_width
-                        height = width / aspect_ratio
+                    # 가로 이미지면 1개만, 세로 이미지면 2-3개 배치
+                    if aspect_ratio > 1.3:
+                        # 가로 이미지: 1개만
+                        images_to_add = [current_img]
+                        idx += 1
                     else:
-                        # 세로가 더 긴 경우
-                        height = max_height
-                        width = height * aspect_ratio
+                        # 세로 이미지: 최대 2-3개 배치
+                        images_to_add = [current_img]
+                        if idx + 1 < len(images):
+                            next_dims = self.get_image_dimensions(images[idx + 1])
+                            if next_dims and next_dims[0] / next_dims[1] <= 1.3:
+                                images_to_add.append(images[idx + 1])
+                                idx += 1
+                        idx += 1
                     
-                    left = (prs.slide_width - width) / 2
-                    top = Inches(1.5)
-                    
-                    slide.shapes.add_picture(image_path, left, top, width=width, height=height)
-                    print(f"  - 이미지 추가: {os.path.basename(image_path)}")
+                    self.add_images_to_slide(prs, slide, images_to_add, prs.slide_height)
+                    print(f"  - 이미지 슬라이드 추가: {len(images_to_add)}개 이미지")
                 else:
-                    print(f"  - 이미지 크기 확인 실패: {image_path}")
+                    idx += 1
                     
             except Exception as e:
-                print(f"  - 이미지 추가 실패 ({image_path}): {e}")
+                print(f"  - 이미지 추가 실패: {e}")
+                idx += 1
     
     def create_ppt(self, sample_mode=False, sample_count=10):
         """전체 PPT를 생성합니다.
