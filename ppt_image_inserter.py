@@ -54,19 +54,35 @@ class PPTImageInserter:
         """업체 디렉토리 목록을 찾고 엑셀 순서대로 정렬합니다."""
         shop_dirs_dict = {}
         
-        # 기본 경로에서 하위 디렉토리 탐색
+        # 기본 경로에서 하위 디렉토리 탐색 (서울/중구 등 지역별로 탐색)
         if os.path.exists(self.base_image_dir):
-            for item in os.listdir(self.base_image_dir):
-                item_path = os.path.join(self.base_image_dir, item)
-                if os.path.isdir(item_path):
-                    # 업체 폴더 내에 업체_xxx.jpg 파일이 있는지 확인
-                    image_files = glob.glob(os.path.join(item_path, "업체", "업체_*.jpg"))
-                    if image_files:
-                        shop_dirs_dict[item] = {
-                            'name': item,
-                            'path': item_path,
-                            'images': sorted(image_files)
-                        }
+            # downloads 폴더 내의 지역 폴더들 탐색
+            for region in os.listdir(self.base_image_dir):
+                region_path = os.path.join(self.base_image_dir, region)
+                if os.path.isdir(region_path):
+                    # 지역 폴더 내의 상세지역 폴더들 탐색
+                    for detail_region in os.listdir(region_path):
+                        detail_region_path = os.path.join(region_path, detail_region)
+                        if os.path.isdir(detail_region_path):
+                            # 상세지역 폴더 내의 업체 폴더들 탐색
+                            for shop_name in os.listdir(detail_region_path):
+                                shop_path = os.path.join(detail_region_path, shop_name)
+                                if os.path.isdir(shop_path):
+                                    # 업체 폴더 내에 업체 하위 폴더가 있는지 확인
+                                    company_folder = os.path.join(shop_path, "업체")
+                                    if os.path.exists(company_folder):
+                                        # 네이버플레이스 캡처 이미지
+                                        naver_capture = os.path.join(company_folder, "네이버플레이스_캡처.png")
+                                        # 업체 이미지들
+                                        image_files = glob.glob(os.path.join(company_folder, "업체_*.jpg"))
+                                        
+                                        if os.path.exists(naver_capture) or image_files:
+                                            shop_dirs_dict[shop_name] = {
+                                                'name': shop_name,
+                                                'path': shop_path,
+                                                'naver_capture': naver_capture if os.path.exists(naver_capture) else None,
+                                                'images': sorted(image_files)
+                                            }
         
         # 엑셀 파일에서 순서 로드
         shop_order = self.load_shop_order_from_excel()
@@ -102,11 +118,13 @@ class PPTImageInserter:
     
     def add_shop_to_ppt(self, prs, shop_info, shop_number):
         """업체 정보를 PPT에 추가합니다."""
+        naver_capture = shop_info.get('naver_capture')
         images = shop_info['images']
         shop_name = shop_info['name']
         
-        # 표지 슬라이드 추가 (업체명)
         slide_layout = prs.slide_layouts[5]  # Blank layout
+        
+        # 1. 표지 슬라이드 (업체명 + 네이버플레이스 캡처)
         slide = prs.slides.add_slide(slide_layout)
         
         # 제목 텍스트 박스 추가
@@ -124,9 +142,37 @@ class PPTImageInserter:
             paragraph.font.size = Inches(0.5)
             paragraph.font.bold = True
         
-        print(f"  - 표지 슬라이드 추가: {shop_name}")
+        # 네이버플레이스 캡처 이미지 추가
+        if naver_capture:
+            try:
+                img_dims = self.get_image_dimensions(naver_capture)
+                if img_dims:
+                    img_width, img_height = img_dims
+                    aspect_ratio = img_width / img_height
+                    
+                    # 슬라이드 중앙에 배치
+                    max_width = Inches(11)
+                    max_height = Inches(5.5)
+                    
+                    if aspect_ratio > max_width / max_height:
+                        width = max_width
+                        height = width / aspect_ratio
+                    else:
+                        height = max_height
+                        width = height * aspect_ratio
+                    
+                    left = (prs.slide_width - width) / 2
+                    top = Inches(1.5)
+                    
+                    slide.shapes.add_picture(naver_capture, left, top, width=width, height=height)
+                    print(f"  - 표지 슬라이드 추가: {shop_name} (네이버플레이스 캡처 포함)")
+            except Exception as e:
+                print(f"  - 네이버플레이스 캡처 추가 실패: {e}")
+                print(f"  - 표지 슬라이드 추가: {shop_name} (텍스트만)")
+        else:
+            print(f"  - 표지 슬라이드 추가: {shop_name}")
         
-        # 이미지 슬라이드 추가
+        # 2. 이미지 슬라이드 추가 (업체_*.jpg)
         for idx, image_path in enumerate(images):
             # 슬라이드 종류 결정
             if "가격표" in os.path.basename(image_path) or idx == 0:
