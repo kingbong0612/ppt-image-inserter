@@ -229,28 +229,20 @@ class PPTImageInserter:
         available_height = prs.slide_height - margin_top - margin_bottom
         
         if len(images_to_add) == 1:
-            # 이미지 1개: 가로 이미지 (여백 포함)
+            # 이미지 1개: 정사각형으로 크롭하여 중앙 배치
             img_path = images_to_add[0]
-            img_dims = self.get_image_dimensions(img_path)
-            if img_dims:
-                img_width, img_height = img_dims
-                aspect_ratio = img_width / img_height
-                
-                # 사용 가능한 영역에 맞춤
-                if aspect_ratio > available_width / available_height:
-                    # 가로가 더 긴 경우
-                    width = available_width
-                    height = width / aspect_ratio
-                else:
-                    # 세로가 더 긴 경우
-                    height = available_height
-                    width = height * aspect_ratio
-                
+            
+            # 사용 가능한 영역의 작은 쪽에 맞춤
+            square_size = min(available_width, available_height)
+            
+            # 이미지를 정사각형으로 크롭
+            cropped_img = self.crop_image_to_square(img_path)
+            if cropped_img:
                 # 중앙 정렬
-                left = margin_left + (available_width - width) / 2
-                top = margin_top + (available_height - height) / 2
+                left = margin_left + (available_width - square_size) / 2
+                top = margin_top + (available_height - square_size) / 2
                 
-                slide.shapes.add_picture(img_path, left, top, width=width, height=height)
+                slide.shapes.add_picture(cropped_img, left, top, width=square_size, height=square_size)
         
         elif len(images_to_add) == 3:
             # 세로 이미지 3개: 가로로 나란히 배치 (안전 여백 포함)
