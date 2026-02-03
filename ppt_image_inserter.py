@@ -254,20 +254,20 @@ def main():
     # 설정 값 (필요에 따라 수정하세요)
     # ========================================
     
-    # Windows 경로 예시 (실제 경로로 변경하세요)
-    BASE_IMAGE_DIR = r"C:\Users\user\Downloads\서울\중구"
+    # 스크립트가 있는 현재 디렉토리 경로
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     
-    # Linux/Mac 경로 예시
-    # BASE_IMAGE_DIR = "/home/user/Downloads/서울/중구"
+    # 이미지 디렉토리 (스크립트와 같은 폴더의 '업체이미지' 폴더)
+    BASE_IMAGE_DIR = os.path.join(SCRIPT_DIR, "업체이미지")
     
-    # 템플릿 PPT 파일
-    TEMPLATE_PPT = "/home/user/uploaded_files/세신샵.pptx"
+    # 템플릿 PPT 파일 (스크립트와 같은 폴더)
+    TEMPLATE_PPT = os.path.join(SCRIPT_DIR, "세신샵.pptx")
     
-    # 엑셀 파일 (업체 순서 정보)
-    EXCEL_FILE = "/home/user/uploaded_files/리스트_네이버지도링크추가 - 복사본.xlsx"
+    # 엑셀 파일 (업체 순서 정보, 스크립트와 같은 폴더)
+    EXCEL_FILE = os.path.join(SCRIPT_DIR, "리스트_네이버지도링크추가 - 복사본.xlsx")
     
-    # 출력 PPT 파일
-    OUTPUT_PPT = "/home/user/webapp/세신샵_완성본.pptx"
+    # 출력 PPT 파일 (스크립트와 같은 폴더)
+    OUTPUT_PPT = os.path.join(SCRIPT_DIR, "세신샵_완성본.pptx")
     
     # ========================================
     

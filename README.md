@@ -20,19 +20,25 @@
 
 ## 📁 디렉토리 구조
 
+프로젝트 폴더에 다음과 같이 파일을 배치하세요:
+
 ```
-C:\Users\user\Downloads\서울\중구\
-├── 온아1호\
-│   └── 업체\
-│       ├── 업체_001.jpg
-│       ├── 업체_002.jpg
-│       └── ...
-├── 온아2호\
-│   └── 업체\
-│       ├── 업체_001.jpg
-│       ├── 업체_002.jpg
-│       └── ...
-└── ... (총 89개 업체 폴더)
+ppt-image-inserter/
+├── ppt_image_inserter.py           # 메인 스크립트
+├── 세신샵.pptx                      # 템플릿 PPT 파일
+├── 리스트_네이버지도링크추가.xlsx    # 업체 순서 엑셀 파일
+├── 업체이미지/                      # 업체 이미지 폴더
+│   ├── 온아1호/
+│   │   └── 업체/
+│   │       ├── 업체_001.jpg
+│   │       ├── 업체_002.jpg
+│   │       └── ...
+│   ├── 온아2호/
+│   │   └── 업체/
+│   │       ├── 업체_001.jpg
+│   │       └── ...
+│   └── ... (총 89개 업체 폴더)
+└── 세신샵_완성본.pptx               # 생성된 PPT 파일 (자동 생성)
 ```
 
 ## 🚀 사용 방법
@@ -43,29 +49,34 @@ C:\Users\user\Downloads\서울\중구\
 pip install python-pptx pillow openpyxl
 ```
 
-### 2. 스크립트 설정
+또는 requirements.txt 사용:
 
-`ppt_image_inserter.py` 파일을 열고 다음 경로들을 수정하세요:
-
-```python
-# 이미지가 있는 기본 디렉토리
-BASE_IMAGE_DIR = r"C:\Users\user\Downloads\서울\중구"
-
-# 템플릿 PPT 파일
-TEMPLATE_PPT = "세신샵.pptx"
-
-# 엑셀 파일 (업체 순서 정보)
-EXCEL_FILE = "리스트_네이버지도링크추가.xlsx"
-
-# 출력 PPT 파일
-OUTPUT_PPT = "세신샵_완성본.pptx"
+```bash
+pip install -r requirements.txt
 ```
+
+### 2. 파일 준비
+
+프로젝트 폴더에 다음 파일들을 배치하세요:
+- `세신샵.pptx` - 템플릿 PPT 파일
+- `리스트_네이버지도링크추가.xlsx` - 업체 순서 엑셀 파일
+- `업체이미지/` 폴더 - 각 업체별 이미지가 담긴 폴더
 
 ### 3. 실행
 
 ```bash
 python ppt_image_inserter.py
 ```
+
+메뉴에서 선택:
+- `1` - 샘플 모드 (처음 10개 업체만 생성)
+- `2` - 전체 작업 (모든 업체 생성)
+
+### 4. 결과 확인
+
+생성된 PPT 파일:
+- 샘플: `세신샵_완성본_샘플.pptx`
+- 전체: `세신샵_완성본.pptx`
 
 ## 📊 슬라이드 구조
 
@@ -91,6 +102,21 @@ python ppt_image_inserter.py
 - **`리스트_네이버지도링크추가.xlsx`** - 업체 순서 정보 엑셀 파일 (별도 준비 필요)
 
 ## 🔧 커스터마이징
+
+### 경로를 직접 지정하고 싶다면
+
+`ppt_image_inserter.py` 파일의 253-270번째 줄 부근에서 경로를 수정할 수 있습니다:
+
+```python
+# 스크립트가 있는 현재 디렉토리 경로
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# 이미지 디렉토리
+BASE_IMAGE_DIR = os.path.join(SCRIPT_DIR, "업체이미지")
+
+# 또는 직접 경로 지정:
+# BASE_IMAGE_DIR = r"C:\Users\user\Downloads\서울\중구"
+```
 
 ### 슬라이드 제목 변경
 
